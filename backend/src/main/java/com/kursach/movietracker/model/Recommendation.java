@@ -29,16 +29,20 @@ public class Recommendation {
     @Column(nullable = false)
     private Double score;
 
+    @Column(length = 240)
+    private String reason;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
     protected Recommendation() {
     }
 
-    public Recommendation(UserEntity user, MediaContent mediaContent, Double score) {
+    public Recommendation(UserEntity user, MediaContent mediaContent, Double score, String reason) {
         this.user = user;
         this.mediaContent = mediaContent;
         this.score = score;
+        this.reason = reason;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -54,8 +58,7 @@ public class Recommendation {
         return score;
     }
 
-    public void updateScore(Double score) {
-        this.score = score;
-        this.createdAt = LocalDateTime.now();
+    public String getReason() {
+        return reason;
     }
 }

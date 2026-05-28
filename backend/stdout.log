@@ -1,0 +1,35 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.5)
+
+2026-05-29T03:45:51.209+08:00  INFO 20132 --- [movie-tracker-backend] [           main] c.k.m.MovieTrackerBackendApplication     : Starting MovieTrackerBackendApplication v0.0.1-SNAPSHOT using Java 25.0.2 with PID 20132 (D:\курсач\backend\target\movie-tracker-backend-0.0.1-SNAPSHOT.jar started by Андрей in D:\курсач\backend)
+2026-05-29T03:45:51.213+08:00  INFO 20132 --- [movie-tracker-backend] [           main] c.k.m.MovieTrackerBackendApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-05-29T03:45:51.794+08:00  INFO 20132 --- [movie-tracker-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-29T03:45:51.853+08:00  INFO 20132 --- [movie-tracker-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 51 ms. Found 6 JPA repository interfaces.
+2026-05-29T03:45:52.358+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-05-29T03:45:52.369+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-29T03:45:52.370+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.31]
+2026-05-29T03:45:52.399+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-05-29T03:45:52.400+08:00  INFO 20132 --- [movie-tracker-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1153 ms
+2026-05-29T03:45:52.531+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-29T03:45:52.574+08:00  INFO 20132 --- [movie-tracker-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-05-29T03:45:52.601+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-05-29T03:45:52.837+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-29T03:45:52.862+08:00  INFO 20132 --- [movie-tracker-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-05-29T03:45:53.009+08:00  INFO 20132 --- [movie-tracker-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7e2c6702
+2026-05-29T03:45:53.011+08:00  INFO 20132 --- [movie-tracker-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-05-29T03:45:53.050+08:00  WARN 20132 --- [movie-tracker-backend] [           main] org.hibernate.dialect.Dialect            : HHH000511: The 5.5.5 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2026-05-29T03:45:53.806+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-05-29T03:45:53.914+08:00  INFO 20132 --- [movie-tracker-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-29T03:45:54.222+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-05-29T03:45:55.261+08:00  INFO 20132 --- [movie-tracker-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-05-29T03:45:55.274+08:00  INFO 20132 --- [movie-tracker-backend] [           main] c.k.m.MovieTrackerBackendApplication     : Started MovieTrackerBackendApplication in 4.399 seconds (process running for 4.781)
+2026-05-29T03:46:02.610+08:00  INFO 20132 --- [movie-tracker-backend] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-29T03:46:02.610+08:00  INFO 20132 --- [movie-tracker-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-05-29T03:46:02.612+08:00  INFO 20132 --- [movie-tracker-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms

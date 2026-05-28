@@ -31,8 +31,4 @@ public class Genre {
     public String getName() {
         return name;
     }
-
-    public void rename(String name) {
-        this.name = name;
-    }
 }

@@ -38,9 +38,7 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public List<MediaContentResponse> search(String query, ContentType type, String genre, Integer year, Double minRating) {
-        String normalizedQuery = blankToNull(query);
-        String normalizedGenre = blankToNull(genre);
-        return mediaContentRepository.search(normalizedQuery, type, normalizedGenre, year, minRating)
+        return mediaContentRepository.search(blankToNull(query), type, blankToNull(genre), year, minRating)
             .stream()
             .map(MediaContentMapper::toResponse)
             .toList();
@@ -82,19 +80,19 @@ public class CatalogService {
     }
 
     private void applyRequest(MediaContent content, MediaContentRequest request) {
+        String title = request.title().trim();
+        String originalTitle = blankToNull(request.originalTitle());
         content.updateInfo(
-            request.title().trim(),
-            request.originalTitle() == null || request.originalTitle().isBlank()
-                ? request.title().trim()
-                : request.originalTitle().trim(),
+            title,
+            originalTitle == null ? title : originalTitle,
             request.contentType(),
             request.releaseYear(),
-            request.duration(),
+            blankToNull(request.duration()),
             request.description().trim(),
-            request.director(),
-            request.mood(),
+            blankToNull(request.director()),
+            blankToNull(request.mood()),
             request.posterUrl().trim(),
-            request.sourceUrl(),
+            blankToNull(request.sourceUrl()),
             resolveGenres(request.genres())
         );
     }

@@ -7,7 +7,6 @@ import com.kursach.movietracker.model.MediaContent;
 import com.kursach.movietracker.model.UserEntity;
 import com.kursach.movietracker.model.WatchRecord;
 import com.kursach.movietracker.model.WatchStatus;
-import com.kursach.movietracker.repository.MediaContentRepository;
 import com.kursach.movietracker.repository.WatchRecordRepository;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -18,20 +17,20 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class WatchRecordService {
     private final WatchRecordRepository watchRecordRepository;
-    private final MediaContentRepository mediaContentRepository;
     private final UserService userService;
     private final CatalogService catalogService;
+    private final RecommendationService recommendationService;
 
     public WatchRecordService(
         WatchRecordRepository watchRecordRepository,
-        MediaContentRepository mediaContentRepository,
         UserService userService,
-        CatalogService catalogService
+        CatalogService catalogService,
+        RecommendationService recommendationService
     ) {
         this.watchRecordRepository = watchRecordRepository;
-        this.mediaContentRepository = mediaContentRepository;
         this.userService = userService;
         this.catalogService = catalogService;
+        this.recommendationService = recommendationService;
     }
 
     @Transactional(readOnly = true)
@@ -44,7 +43,6 @@ public class WatchRecordService {
 
     @Transactional
     public WatchRecordResponse add(Long userId, WatchRecordRequest request) {
-        validateRating(request.rating());
         UserEntity user = userService.getUser(userId);
         MediaContent content = catalogService.getEntity(request.mediaContentId());
 
@@ -55,13 +53,13 @@ public class WatchRecordService {
 
         WatchStatus status = request.status() == null ? WatchStatus.PLANNED : request.status();
         WatchRecord record = watchRecordRepository.save(new WatchRecord(user, content, status, request.rating()));
-        recalculateAverageRating(content.getId());
+        recalculateAverageRating(content);
+        recommendationService.invalidateForUser(userId);
         return toResponse(record);
     }
 
     @Transactional
     public WatchRecordResponse update(Long userId, Long recordId, WatchRecordUpdateRequest request) {
-        validateRating(request.rating());
         WatchRecord record = watchRecordRepository.findById(recordId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Запись просмотра не найдена"));
         if (!record.getUser().getId().equals(userId)) {
@@ -76,7 +74,8 @@ public class WatchRecordService {
         }
 
         WatchRecord saved = watchRecordRepository.save(record);
-        recalculateAverageRating(saved.getMediaContent().getId());
+        recalculateAverageRating(saved.getMediaContent());
+        recommendationService.invalidateForUser(userId);
         return toResponse(saved);
     }
 
@@ -87,21 +86,15 @@ public class WatchRecordService {
         if (!record.getUser().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Нельзя удалить чужую запись просмотра");
         }
-        Long contentId = record.getMediaContent().getId();
+        MediaContent content = record.getMediaContent();
         watchRecordRepository.delete(record);
-        recalculateAverageRating(contentId);
+        watchRecordRepository.flush();
+        recalculateAverageRating(content);
+        recommendationService.invalidateForUser(userId);
     }
 
-    private void recalculateAverageRating(Long mediaContentId) {
-        MediaContent content = catalogService.getEntity(mediaContentId);
-        content.calculateAverageRating(watchRecordRepository.findByMediaContentId(mediaContentId));
-        mediaContentRepository.save(content);
-    }
-
-    private void validateRating(Integer rating) {
-        if (rating != null && (rating < 0 || rating > 10)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Оценка должна быть от 0 до 10");
-        }
+    private void recalculateAverageRating(MediaContent content) {
+        content.calculateAverageRating(watchRecordRepository.findByMediaContentId(content.getId()));
     }
 
     private WatchRecordResponse toResponse(WatchRecord record) {

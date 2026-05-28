@@ -2,6 +2,8 @@ package com.kursach.movietracker.controller;
 
 import com.kursach.movietracker.dto.MediaContentRequest;
 import com.kursach.movietracker.dto.MediaContentResponse;
+import com.kursach.movietracker.integration.tmdb.CatalogSyncService;
+import com.kursach.movietracker.integration.tmdb.CatalogSyncService.SyncResult;
 import com.kursach.movietracker.model.ContentType;
 import com.kursach.movietracker.service.CatalogService;
 import jakarta.validation.Valid;
@@ -22,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/catalog")
 public class CatalogController {
     private final CatalogService catalogService;
+    private final CatalogSyncService catalogSyncService;
 
-    public CatalogController(CatalogService catalogService) {
+    public CatalogController(CatalogService catalogService, CatalogSyncService catalogSyncService) {
         this.catalogService = catalogService;
+        this.catalogSyncService = catalogSyncService;
     }
 
     @GetMapping
@@ -58,5 +62,10 @@ public class CatalogController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         catalogService.delete(id);
+    }
+
+    @PostMapping("/sync")
+    public SyncResult sync() {
+        return catalogSyncService.syncPopular();
     }
 }

@@ -5,6 +5,7 @@ import com.kursach.movietracker.service.RecommendationService;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,7 +19,12 @@ public class RecommendationController {
     }
 
     @GetMapping
-    public List<RecommendationResponse> buildForUser(@PathVariable Long userId) {
-        return recommendationService.buildForUser(userId);
+    public List<RecommendationResponse> getForUser(@PathVariable Long userId) {
+        return recommendationService.getForUser(userId);
+    }
+
+    @PostMapping("/refresh")
+    public List<RecommendationResponse> refresh(@PathVariable Long userId) {
+        return recommendationService.refreshForUser(userId);
     }
 }

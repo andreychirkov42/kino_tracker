@@ -308,7 +308,7 @@ h3 {
 .primary-action,
 .ghost-action,
 .icon-button,
-.status-button,
+.status-pill,
 .segmented button,
 .type-switch button {
   display: inline-flex;
@@ -777,22 +777,46 @@ h3 {
   flex: 0 0 auto;
 }
 
-.card-footer .status-button {
-  flex: 1 1 126px;
-}
-
 .icon-button {
   flex: 0 0 40px;
 }
 
-.status-button {
-  min-width: 112px;
-  max-width: 100%;
+.status-pills {
+  display: flex;
+  flex: 1 1 200px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.status-pill {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
   padding: 0 10px;
-  background: #eee9df;
-  color: var(--text);
-  font-size: 13px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 800;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.status-pill:hover {
+  color: var(--text);
+  background: #e6e0d2;
+}
+
+.status-pill.planned.active {
+  background: var(--accent-3);
+  color: white;
+}
+
+.status-pill.watched.active {
+  background: var(--accent-2);
+  color: white;
+}
+
+.status-pill.active:hover {
+  filter: brightness(0.94);
 }
 
 .details-panel {
@@ -1143,11 +1167,11 @@ h3 {
   }
 
   .card-footer {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
   }
 
-  .status-button {
+  .status-pills {
     width: 100%;
   }
 }

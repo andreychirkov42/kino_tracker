@@ -12,9 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -67,9 +65,6 @@ public class MediaContent {
         inverseJoinColumns = @JoinColumn(name = "genre_id")
     )
     private Set<Genre> genres = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "mediaContent")
-    private List<WatchRecord> watchRecords = new ArrayList<>();
 
     public MediaContent() {
     }

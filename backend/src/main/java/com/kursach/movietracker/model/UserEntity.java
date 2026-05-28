@@ -8,10 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "app_users")
@@ -32,9 +29,6 @@ public class UserEntity {
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
-
-    @OneToMany(mappedBy = "user")
-    private List<WatchRecord> watchRecords = new ArrayList<>();
 
     protected UserEntity() {
     }
@@ -64,14 +58,5 @@ public class UserEntity {
 
     public Role getRole() {
         return role;
-    }
-
-    public void updateProfile(String username, String email) {
-        this.username = username;
-        this.email = email;
-    }
-
-    public boolean checkRole(String roleName) {
-        return role != null && roleName.equals(role.getName());
     }
 }

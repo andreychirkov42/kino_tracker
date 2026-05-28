@@ -21,6 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RecommendationService {
+    private static final int RECOMMENDATION_LIMIT = 6;
+    private static final int MIN_LIKED_RATING = 7;
+    private static final double FAVORITE_BONUS = 3.0;
+    private static final double SAME_DIRECTOR_BONUS = 6.0;
+
     private final RecommendationRepository recommendationRepository;
     private final WatchRecordRepository watchRecordRepository;
     private final MediaContentRepository mediaContentRepository;
@@ -39,7 +44,26 @@ public class RecommendationService {
     }
 
     @Transactional
-    public List<RecommendationResponse> buildForUser(Long userId) {
+    public List<RecommendationResponse> getForUser(Long userId) {
+        userService.getUser(userId);
+        List<Recommendation> existing = recommendationRepository.findByUserIdOrderByScoreDesc(userId);
+        if (existing.isEmpty()) {
+            existing = rebuildForUser(userId);
+        }
+        return existing.stream().map(this::toResponse).toList();
+    }
+
+    @Transactional
+    public List<RecommendationResponse> refreshForUser(Long userId) {
+        return rebuildForUser(userId).stream().map(this::toResponse).toList();
+    }
+
+    @Transactional
+    public void invalidateForUser(Long userId) {
+        recommendationRepository.deleteByUserId(userId);
+    }
+
+    private List<Recommendation> rebuildForUser(Long userId) {
         UserEntity user = userService.getUser(userId);
         List<WatchRecord> records = watchRecordRepository.findByUserIdOrderByAddedAtDesc(userId);
         Set<Long> userContentIds = new HashSet<>();
@@ -48,31 +72,29 @@ public class RecommendationService {
         for (WatchRecord record : records) {
             userContentIds.add(record.getMediaContent().getId());
             int rating = record.getRating() == null ? 0 : record.getRating();
-            if (rating < 7) {
+            if (rating < MIN_LIKED_RATING) {
                 continue;
             }
-            double favoriteBonus = record.getStatus() == WatchStatus.FAVORITE ? 3.0 : 0.0;
+            double bonus = record.getStatus() == WatchStatus.FAVORITE ? FAVORITE_BONUS : 0.0;
             for (Genre genre : record.getMediaContent().getGenres()) {
-                genreScores.merge(genre.getName(), rating + favoriteBonus, Double::sum);
+                genreScores.merge(genre.getName(), rating + bonus, Double::sum);
             }
         }
 
         recommendationRepository.deleteByUserId(userId);
-        List<Recommendation> saved = mediaContentRepository.findAll().stream()
-            .filter(content -> !userContentIds.contains(content.getId()))
-            .map(content -> new Recommendation(user, content, calculateScore(content, records, genreScores)))
-            .sorted(Comparator.comparing(Recommendation::getScore).reversed())
-            .limit(6)
-            .map(recommendationRepository::save)
-            .toList();
+        recommendationRepository.flush();
 
-        return saved.stream()
-            .map(recommendation -> new RecommendationResponse(
-                recommendation.getId(),
-                recommendation.getScore(),
-                buildReason(recommendation.getMediaContent(), records, genreScores),
-                MediaContentMapper.toResponse(recommendation.getMediaContent())
+        return mediaContentRepository.findAll().stream()
+            .filter(content -> !userContentIds.contains(content.getId()))
+            .map(content -> new Recommendation(
+                user,
+                content,
+                calculateScore(content, records, genreScores),
+                buildReason(content, records, genreScores)
             ))
+            .sorted(Comparator.comparing(Recommendation::getScore).reversed())
+            .limit(RECOMMENDATION_LIMIT)
+            .map(recommendationRepository::save)
             .toList();
     }
 
@@ -81,10 +103,10 @@ public class RecommendationService {
         for (Genre genre : content.getGenres()) {
             score += genreScores.getOrDefault(genre.getName(), 0.0);
         }
-        boolean sameDirector = records.stream()
-            .anyMatch(record -> content.getDirector() != null && content.getDirector().equals(record.getMediaContent().getDirector()));
+        boolean sameDirector = content.getDirector() != null && records.stream()
+            .anyMatch(record -> content.getDirector().equals(record.getMediaContent().getDirector()));
         if (sameDirector) {
-            score += 6.0;
+            score += SAME_DIRECTOR_BONUS;
         }
         if (records.size() < 2) {
             score += content.getReleaseYear() / 100.0;
@@ -102,5 +124,14 @@ public class RecommendationService {
             .findFirst()
             .map(genre -> "Похоже на ваши высокие оценки в жанре «" + genre + "».")
             .orElse("Добавляет разнообразие к текущему личному списку.");
+    }
+
+    private RecommendationResponse toResponse(Recommendation recommendation) {
+        return new RecommendationResponse(
+            recommendation.getId(),
+            recommendation.getScore(),
+            recommendation.getReason(),
+            MediaContentMapper.toResponse(recommendation.getMediaContent())
+        );
     }
 }

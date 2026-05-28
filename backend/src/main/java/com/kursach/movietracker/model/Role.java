@@ -31,12 +31,4 @@ public class Role {
     public String getName() {
         return name;
     }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public boolean hasPermission(String permission) {
-        return "ADMIN".equals(name) || "READ".equals(permission);
-    }
 }

@@ -6,6 +6,7 @@ import {
   Check,
   Clapperboard,
   Clock3,
+  Download,
   ExternalLink,
   Film,
   Heart,
@@ -124,6 +125,7 @@ function mapContent(content, record) {
     genres: content.genres || [],
     mood: content.mood || 'обычно',
     director: content.director || 'Не указан',
+    userRating: record?.rating ?? null,
     rating: record?.rating ?? Math.round(content.averageRating || 0),
     status: record ? toUiStatus(record.status) : 'new',
     posterUrl: content.posterUrl,
@@ -220,11 +222,11 @@ function App() {
   const stats = useMemo(() => {
     const list = titles.filter((item) => item.status !== 'new');
     const watched = titles.filter((item) => ['watched', 'favorite'].includes(item.status));
-    const rated = watched.filter((item) => item.rating > 0);
+    const rated = watched.filter((item) => item.userRating > 0);
     const average =
       rated.length === 0
         ? 0
-        : Math.round((rated.reduce((sum, item) => sum + item.rating, 0) / rated.length) * 10) / 10;
+        : Math.round((rated.reduce((sum, item) => sum + item.userRating, 0) / rated.length) * 10) / 10;
 
     return {
       inList: list.length,
@@ -248,13 +250,13 @@ function App() {
       const queryMatches =
         !normalizedQuery ||
         [item.title, item.original, item.director, item.description].some((value) =>
-          value.toLowerCase().includes(normalizedQuery),
+          value?.toLowerCase().includes(normalizedQuery),
         );
       const statusMatches = status === 'all' || item.status === status;
       const typeMatches = type === 'Все' || item.type === type;
       const genreMatches = genre === 'Все' || item.genres.includes(genre);
       const yearMatches = year === 'Все' || item.year === Number(year);
-      const ratingMatches = item.rating >= min || min === 0;
+      const ratingMatches = min === 0 || item.rating >= min;
 
       return (
         sourceMatches &&
@@ -336,7 +338,7 @@ function App() {
         body: JSON.stringify({
           mediaContentId: item.id,
           status: toApiStatus(nextStatus),
-          rating: nextStatus === 'watched' ? 7 : null,
+          rating: null,
         }),
       });
       setNotice('Контент добавлен в личный список.');
@@ -362,9 +364,7 @@ function App() {
       const nextRating =
         patch.rating !== undefined
           ? patch.rating
-          : item.rating > 0 && item.status !== 'new'
-            ? item.rating
-            : null;
+          : item.userRating ?? null;
 
       if (item.watchRecordId) {
         await apiRequest(`/users/${session.id}/watchlist/${item.watchRecordId}`, {
@@ -469,6 +469,20 @@ function App() {
       await loadData();
     } catch (error) {
       setNotice(error.message);
+    }
+  }
+
+  async function syncCatalogFromTmdb() {
+    setNotice('Синхронизация с TMDB... это может занять до минуты.');
+    setApiError('');
+    try {
+      const result = await apiRequest('/catalog/sync', { method: 'POST' });
+      setNotice(
+        `TMDB: добавлено ${result.created}, пропущено ${result.skipped}, ошибок ${result.failed}.`,
+      );
+      await loadData();
+    } catch (error) {
+      setApiError(`Не удалось синхронизировать с TMDB: ${error.message}`);
     }
   }
 
@@ -603,7 +617,16 @@ function App() {
           </div>
         </section>
 
-        <button className="logout-button" type="button" onClick={() => setSession(null)}>
+        <button
+          className="logout-button"
+          type="button"
+          onClick={() => {
+            setSession(null);
+            setSelected(null);
+            setTitles([]);
+            setRecommendations([]);
+          }}
+        >
           <LogOut size={18} />
           Выйти
         </button>
@@ -718,6 +741,7 @@ function App() {
             onDelete={deleteTitle}
             onEdit={startEditing}
             onSubmit={handleAdminSubmit}
+            onSync={syncCatalogFromTmdb}
             setForm={setAdminForm}
             titles={titles}
           />
@@ -828,7 +852,16 @@ function Filters(props) {
 }
 
 function TitleCard({ item, onAdd, onEdit, onSelect, onUpdate, selected, userRole }) {
-  const inList = item.status !== 'new';
+  function toggleStatus(event, status) {
+    event.stopPropagation();
+    if (item.status === status) {
+      onUpdate(item.id, { status: 'new' });
+    } else if (item.status === 'new') {
+      onAdd(item, status);
+    } else {
+      onUpdate(item.id, { status });
+    }
+  }
 
   return (
     <article className={`title-card ${selected ? 'selected' : ''}`} onClick={() => onSelect(item)}>
@@ -851,7 +884,7 @@ function TitleCard({ item, onAdd, onEdit, onSelect, onUpdate, selected, userRole
               event.stopPropagation();
               onUpdate(item.id, {
                 status: item.status === 'favorite' ? 'watched' : 'favorite',
-                rating: item.rating || 8,
+                rating: item.userRating || 8,
               });
             }}
           >
@@ -866,17 +899,26 @@ function TitleCard({ item, onAdd, onEdit, onSelect, onUpdate, selected, userRole
 
         <div className="card-footer">
           <Rating value={item.rating} />
-          <button
-            className="status-button"
-            onClick={(event) => {
-              event.stopPropagation();
-              inList ? onUpdate(item.id, { status: item.status === 'watched' ? 'planned' : 'watched' }) : onAdd(item);
-            }}
-            type="button"
-          >
-            {inList ? <Check size={16} /> : <Plus size={16} />}
-            {inList ? statusLabels[item.status] : 'В список'}
-          </button>
+          <div className="status-pills">
+            <button
+              className={`status-pill planned ${item.status === 'planned' ? 'active' : ''}`}
+              onClick={(event) => toggleStatus(event, 'planned')}
+              type="button"
+              aria-pressed={item.status === 'planned'}
+            >
+              <Bookmark size={14} />
+              В планах
+            </button>
+            <button
+              className={`status-pill watched ${item.status === 'watched' ? 'active' : ''}`}
+              onClick={(event) => toggleStatus(event, 'watched')}
+              type="button"
+              aria-pressed={item.status === 'watched'}
+            >
+              <Check size={14} />
+              Просмотрено
+            </button>
+          </div>
           {userRole === 'ADMIN' && (
             <button
               className="ghost-action"
@@ -897,6 +939,12 @@ function TitleCard({ item, onAdd, onEdit, onSelect, onUpdate, selected, userRole
 }
 
 function Details({ item, onAdd, onClose, onEdit, onUpdate, userRole }) {
+  const [pendingRating, setPendingRating] = useState(item?.userRating ?? 0);
+
+  useEffect(() => {
+    setPendingRating(item?.userRating ?? 0);
+  }, [item?.id, item?.userRating]);
+
   if (!item) {
     return (
       <aside className="details-panel empty-details">
@@ -905,6 +953,14 @@ function Details({ item, onAdd, onClose, onEdit, onUpdate, userRole }) {
       </aside>
     );
   }
+
+  const commitRating = () => {
+    if (pendingRating === (item.userRating ?? 0)) return;
+    onUpdate(item.id, {
+      rating: pendingRating,
+      status: pendingRating > 0 && item.status === 'new' ? 'watched' : item.status,
+    });
+  };
 
   return (
     <aside className="details-panel">
@@ -959,19 +1015,17 @@ function Details({ item, onAdd, onClose, onEdit, onUpdate, userRole }) {
       <div className="rating-editor">
         <div>
           <span className="panel-kicker">Оценка</span>
-          <strong>{item.rating || 'нет'}</strong>
+          <strong>{pendingRating || 'нет'}</strong>
         </div>
         <input
           max="10"
           min="0"
           type="range"
-          value={item.rating}
-          onChange={(event) =>
-            onUpdate(item.id, {
-              rating: Number(event.target.value),
-              status: Number(event.target.value) > 0 && item.status === 'new' ? 'watched' : item.status,
-            })
-          }
+          value={pendingRating}
+          onChange={(event) => setPendingRating(Number(event.target.value))}
+          onMouseUp={commitRating}
+          onTouchEnd={commitRating}
+          onKeyUp={commitRating}
         />
       </div>
 
@@ -994,7 +1048,7 @@ function Details({ item, onAdd, onClose, onEdit, onUpdate, userRole }) {
 }
 
 function AdminPanel(props) {
-  const { adminError, editingId, form, onCancel, onDelete, onEdit, onSubmit, setForm, titles } = props;
+  const { adminError, editingId, form, onCancel, onDelete, onEdit, onSubmit, onSync, setForm, titles } = props;
 
   return (
     <section className="admin-grid">
@@ -1085,6 +1139,10 @@ function AdminPanel(props) {
             <span className="eyebrow">MediaContent</span>
             <h2>Управление каталогом</h2>
           </div>
+          <button className="primary-action" type="button" onClick={onSync}>
+            <Download size={18} />
+            Синхронизировать с TMDB
+          </button>
         </div>
         {titles.map((item) => (
           <article className="admin-row" key={item.id}>

@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kursach.movietracker.dto.MediaContentRequest;
 import com.kursach.movietracker.dto.WatchRecordRequest;
+import com.kursach.movietracker.integration.tmdb.CatalogSyncService;
+import com.kursach.movietracker.integration.tmdb.CatalogSyncService.SyncResult;
 import com.kursach.movietracker.model.ContentType;
+import com.kursach.movietracker.model.MediaContent;
 import com.kursach.movietracker.model.Role;
 import com.kursach.movietracker.model.UserEntity;
 import com.kursach.movietracker.model.WatchStatus;
@@ -17,6 +20,8 @@ import com.kursach.movietracker.service.WatchRecordService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,7 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
+    private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
     private static final String SEED_PATH = "seed/kinohub-catalog.json";
+    private static final int STUDENT_SEED_LIMIT = 5;
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
@@ -33,6 +40,7 @@ public class DataInitializer implements CommandLineRunner {
     private final WatchRecordRepository watchRecordRepository;
     private final CatalogService catalogService;
     private final WatchRecordService watchRecordService;
+    private final CatalogSyncService catalogSyncService;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
 
@@ -43,6 +51,7 @@ public class DataInitializer implements CommandLineRunner {
         WatchRecordRepository watchRecordRepository,
         CatalogService catalogService,
         WatchRecordService watchRecordService,
+        CatalogSyncService catalogSyncService,
         PasswordEncoder passwordEncoder,
         ObjectMapper objectMapper
     ) {
@@ -52,6 +61,7 @@ public class DataInitializer implements CommandLineRunner {
         this.watchRecordRepository = watchRecordRepository;
         this.catalogService = catalogService;
         this.watchRecordService = watchRecordService;
+        this.catalogSyncService = catalogSyncService;
         this.passwordEncoder = passwordEncoder;
         this.objectMapper = objectMapper;
     }
@@ -69,8 +79,29 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.save(new UserEntity("admin", "admin@mail.ru", passwordEncoder.encode("admin123"), adminRole));
         }
 
-        seedCatalogFromJson();
+        if (mediaContentRepository.count() == 0) {
+            populateCatalog();
+        }
         seedStudentWatchlist();
+    }
+
+    private void populateCatalog() {
+        if (catalogSyncService.isAvailable()) {
+            try {
+                SyncResult result = catalogSyncService.syncPopular();
+                log.info("Catalog seeded from TMDB: created={}, skipped={}, failed={}",
+                    result.created(), result.skipped(), result.failed());
+                if (result.created() > 0) {
+                    return;
+                }
+                log.warn("TMDB returned no usable items, falling back to local seed");
+            } catch (RuntimeException exception) {
+                log.warn("TMDB sync failed, falling back to local seed: {}", exception.getMessage());
+            }
+        } else {
+            log.info("TMDB API key not set, seeding catalog from local JSON");
+        }
+        seedCatalogFromJson();
     }
 
     private void seedCatalogFromJson() {
@@ -110,16 +141,15 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
-        addRecord(student.getId(), 1L, WatchStatus.WATCHED, 8);
-        addRecord(student.getId(), 3L, WatchStatus.WATCHED, 9);
-        addRecord(student.getId(), 4L, WatchStatus.WATCHED, 7);
-        addRecord(student.getId(), 9L, WatchStatus.FAVORITE, 9);
-        addRecord(student.getId(), 10L, WatchStatus.PLANNED, null);
-    }
+        List<MediaContent> seedContent = mediaContentRepository.findAll().stream()
+            .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
+            .limit(STUDENT_SEED_LIMIT)
+            .toList();
 
-    private void addRecord(Long userId, Long mediaContentId, WatchStatus status, Integer rating) {
-        if (mediaContentRepository.existsById(mediaContentId)) {
-            watchRecordService.add(userId, new WatchRecordRequest(mediaContentId, status, rating));
+        WatchStatus[] statuses = {WatchStatus.WATCHED, WatchStatus.WATCHED, WatchStatus.WATCHED, WatchStatus.FAVORITE, WatchStatus.PLANNED};
+        Integer[] ratings = {8, 9, 7, 9, null};
+        for (int i = 0; i < seedContent.size(); i++) {
+            watchRecordService.add(student.getId(), new WatchRecordRequest(seedContent.get(i).getId(), statuses[i], ratings[i]));
         }
     }
 
