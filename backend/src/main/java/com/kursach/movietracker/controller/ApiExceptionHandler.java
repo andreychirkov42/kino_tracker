@@ -1,6 +1,7 @@
 package com.kursach.movietracker.controller;
 
 import com.kursach.movietracker.dto.ErrorResponse;
+import com.kursach.movietracker.integration.tmdb.TmdbException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,6 +51,20 @@ public class ApiExceptionHandler {
             LocalDateTime.now(),
             HttpStatus.CONFLICT.value(),
             "Такая запись уже существует или нарушает ограничение базы данных",
+            Map.of()
+        ));
+    }
+
+    @ExceptionHandler(TmdbException.class)
+    public ResponseEntity<ErrorResponse> handleTmdb(TmdbException exception) {
+        log.warn("TMDB synchronization failed: {}", exception.getMessage());
+        HttpStatus status = exception.getMessage() != null && exception.getMessage().contains("API key is not configured")
+            ? HttpStatus.SERVICE_UNAVAILABLE
+            : HttpStatus.BAD_GATEWAY;
+        return ResponseEntity.status(status).body(new ErrorResponse(
+            LocalDateTime.now(),
+            status.value(),
+            exception.getMessage(),
             Map.of()
         ));
     }

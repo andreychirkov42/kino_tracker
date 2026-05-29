@@ -91,7 +91,7 @@ public class TmdbClient {
 
     private <T> T get(String pathWithQuery, TypeReference<T> type) {
         if (!isConfigured()) {
-            throw new IllegalStateException("TMDB API key is not configured (tmdb.api-key)");
+            throw new TmdbException("TMDB API key is not configured (tmdb.api-key)");
         }
         boolean bearer = apiKey.startsWith("eyJ");
         URI uri;
@@ -111,7 +111,9 @@ public class TmdbClient {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() / 100 != 2) {
-                throw new TmdbException("TMDB returned HTTP " + response.statusCode() + " for " + pathWithQuery);
+                throw new TmdbException(
+                    "TMDB returned HTTP " + response.statusCode() + " for " + pathWithQuery + responseDetails(response.body())
+                );
             }
             return objectMapper.readValue(response.body(), type);
         } catch (IOException | InterruptedException exception) {
@@ -124,5 +126,16 @@ public class TmdbClient {
 
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private static String responseDetails(String body) {
+        if (body == null || body.isBlank()) {
+            return "";
+        }
+        String compact = body.replaceAll("\\s+", " ").trim();
+        if (compact.length() > 300) {
+            compact = compact.substring(0, 300) + "...";
+        }
+        return ": " + compact;
     }
 }
